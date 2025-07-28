@@ -69,3 +69,6 @@ This output can be used by any downstream UI, chatbot, or planning assistant.
 This hybrid of **visual PDF analysis + sentence-transformer semantic ranking** gives us the best of both worlds:
 - Human-like heading extraction without needing OCR
 - Deep contextual understanding without expensive LLM inference
+
+
+# The project is tested on sample input/output provided in the github link : https://github.com/jhaaj08/Adobe-India-Hackathon25.git
