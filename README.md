@@ -1,39 +1,71 @@
 # Approach Explanation
 
 ## Objective
-The task is to extract and prioritize relevant information from a collection of travel-related PDF documents based on a given persona and job-to-be-done. The system should work entirely offline, within strict resource constraints: only CPU execution, model size under 1GB, and a total runtime within 60 seconds for processing 3–5 documents.
 
-## Methodology
+The goal of this project is to extract the **most relevant sections** from a collection of travel-related PDFs to assist a **Travel Planner** in fulfilling a specific **job-to-be-done** (e.g., “Plan a 4-day trip for a group of 10 college friends”). The final output is a structured JSON file containing:
+- The top-ranked sections across documents
+- Their titles and locations
+- A refined summary from each section using extractive summarization
 
-### 1. PDF Text Extraction
-Each input PDF is parsed using the `PyMuPDF` (`fitz`) library. We extract text page by page and treat each page as a potential "section" if it contains sufficient text (over 100 characters). This allows us to isolate meaningful content across documents.
+---
 
-### 2. Text Embedding
-To semantically compare the persona and task with the document sections, we use `sentence-transformers` with the `all-MiniLM-L6-v2` model. This model is compact (~90MB), fast, and provides strong semantic representation for sentence-level text. We generate dense vector embeddings for:
-- The user query (persona + task)
-- Each section’s full text
+## Pipeline Overview
 
-### 3. Relevance Ranking
-Using cosine similarity between the user query vector and section embeddings, we score each section. The top 5 most relevant sections are selected and ranked by importance.
+1. **Heading Detection and Section Segmentation**
+2. **Sentence Embedding with Semantic Ranking**
+3. **Extractive Summarization**
+4. **JSON Output Generation**
 
-### 4. Subsection Analysis
-For deeper insights, each of the top-ranked sections is split into sentences. Sentences are embedded and scored individually against the user query. The most relevant 5 sentences are extracted to form a refined summary of that section.
+---
 
-### 5. JSON Output
-The system outputs a structured `output.json` file in the `/app/output` directory, containing:
-- Metadata (persona, job, input documents, timestamp)
-- Ranked relevant sections with their metadata
-- Refined subsection analysis
+## Step 1: Section Extraction using Font-Based Heading Detection
 
-## Design Highlights
-- Runs fully on CPU
-- Total processing time within 60 seconds for 3–5 documents
-- All external models are pre-downloaded in Docker image (offline runtime)
-- No dependencies on internet or external APIs
+We use **PyMuPDF (fitz)** to parse the visual structure of the PDFs. To detect section titles:
+- We analyze the **font sizes** and **frequency** of text styles across the document.
+- Font sizes significantly **larger than the body text** are assumed to be section headings.
+- Even if bold is not used, **relative font size** (and sometimes position on the page) provides strong cues.
 
-## Model Choice Justification
-The `all-MiniLM-L6-v2` model was chosen because it balances accuracy and efficiency. It performs well on semantic similarity tasks and has a small memory footprint—ideal for constrained compute environments.
+This ensures the pipeline generalizes well to diverse PDF layouts — even those lacking tags or proper structure.
 
-## Conclusion
-This system provides a lightweight and robust pipeline for semantically understanding and extracting information from multiple documents. It is especially well-suited for offline, resource-constrained environments like document triage, travel planning, and summarization.
+---
 
+## Step 2: Semantic Ranking using `all-MiniLM-L6-v2`
+
+We employ the [`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) model from **Sentence Transformers** to generate embeddings for each section and the user query (persona + task). This model is chosen because:
+
+- **Small Size (≈80MB):** Ideal for CPU-only Docker deployment
+- **Fast Inference:** Can encode hundreds of sections within seconds
+- **Strong Performance:** Despite being compact, it achieves high semantic matching accuracy
+- **Trained on Natural Language Inference and Semantic Textual Similarity**, making it ideal for text ranking tasks
+
+We calculate **cosine similarity** between the query embedding and each section to identify the top 5 most relevant sections.
+
+---
+
+##  Step 3: Extractive Summarization
+
+Within each top section, we split the text into individual sentences and re-score them using the same query embedding. We then select the top 5 most relevant sentences to form a **refined summary**.
+
+This method provides summaries that are:
+- Faithful to the original content (no hallucinations)
+- Contextually relevant to the task
+- Concise and informative
+
+---
+
+## Step 4: Output Generation
+
+Finally, we structure the result as JSON containing:
+- Document metadata
+- Top 5 extracted sections (title, rank, page number)
+- Subsection analysis with extractive summaries
+
+This output can be used by any downstream UI, chatbot, or planning assistant.
+
+---
+
+## Why This Approach Works
+
+This hybrid of **visual PDF analysis + sentence-transformer semantic ranking** gives us the best of both worlds:
+- Human-like heading extraction without needing OCR
+- Deep contextual understanding without expensive LLM inference
