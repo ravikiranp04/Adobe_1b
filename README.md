@@ -2,7 +2,7 @@
 
 ## Objective
 
-The goal of this project is to extract the **most relevant sections** from a collection of PDFs to assist a persona in fulfilling a specific **job-to-be-done** (e.g., “Plan a 4-day trip for a group of 10 college friends” for person "Travel Planner"). The final output is a structured JSON file containing:
+The goal of this project is to extract the **most relevant sections** from a collection of PDFs to assist a persona in fulfilling a specific **job-to-be-done** (e.g., “Plan a 4-day trip for a group of 10 college friends” for persona "Travel Planner"). The final output is a structured JSON file containing:
 - The top-ranked sections across documents
 - Their titles and locations
 - A refined summary from each section using extractive summarization
